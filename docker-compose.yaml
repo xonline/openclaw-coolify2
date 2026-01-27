@@ -13,7 +13,7 @@ services:
       NODE_OPTIONS: '--max-old-space-size=1536'
       HOME: /home/node
       TERM: xterm-256color
-      CLAWDBOT_GATEWAY_BIND: lan
+      CLAWDBOT_GATEWAY_BIND: auto
       CLAWDBOT_GATEWAY_PORT: 18789
 
       SERVICE_URL_CLAWDBOT_18789: null
