@@ -112,7 +112,7 @@ ENV PATH="/home/node/.npm-global/bin:${PATH}"
 
 # Run Moltbot install scripts as 'node' user
 # This ensures it installs to /home/node/.npm-global/bin
-ARG MOLT_BOT_BETA=0
+ARG MOLT_BOT_BETA=false
 ENV MOLT_BOT_BETA=${MOLT_BOT_BETA} \
     CLAWDBOT_NO_ONBOARD=1
 RUN curl -fsSL https://molt.bot/install.sh | bash && \
