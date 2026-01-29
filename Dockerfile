@@ -115,9 +115,9 @@ ENV MOLT_BOT_BETA=${MOLT_BOT_BETA} \
 RUN curl -fsSL https://molt.bot/install.sh | bash
 
 # Install AI Tool Suite (globally as root)
-RUN npm install -g @google/gemini-cli @openai/codex opencode-ai && \
-    curl -fsSL https://claude.ai/install.sh | bash -s -- -y && \
-    curl -LsSf https://code.kimi.com/install.sh | bash -s -- -y
+RUN npm install -g @openai/codex @google/gemini-cli && \
+    curl -fsSL https://claude.ai/install.sh | bash && \
+    curl -L https://code.kimi.com/install.sh | bash
 
 # Symlink tools if needed, but installing as root usually puts them in PATH.
 # Just in case:
