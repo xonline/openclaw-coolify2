@@ -107,11 +107,19 @@ Once running, check the **Service Logs** in Coolify.
 - You will see a **Dashboard URL** with a token (e.g., `http://.../?token=xyz`).
 - **Click that link** to access your Moltbot Gateway UI.
 
-### 4. Setup (Onboard)
-For a guided configuration of your agent's personality and skills:
-1.  Open the **Service Terminal** in Coolify.
-2.  Run: `moltbot onboard`
-3.  Follow the interactive wizard to set your model preferences and system prompts.
+### 4. First-Time Setup (Onboarding)
+Once the container is running and healthy:
+
+1.  **Access the Dashboard**: Open the **Dashboard URL** (with token) from the service logs.
+2.  **Approve Your Device**: 
+    - You will see an "Unauthorized" or pairing screen (this is normal). 
+    - Open the **Service Terminal** in Coolify.
+    - Run: `molt-approve` (This will automatically accept your browser's connection).
+    - Refresh your browser.
+3.  **Guided Onboarding**: To configure your agent's personality and skills:
+    - In the terminal, run: `moltbot onboard`
+    - Follow the interactive wizard.
+4.  **Configure Channels**: Go to the **Channels** tab in the dashboard to link WhatsApp, Telegram, etc.
 
 ---
 
