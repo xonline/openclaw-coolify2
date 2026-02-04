@@ -161,6 +161,10 @@ Need to show a client your work?
     *   Create a folder `skills/my-tools` with a `SKILL.md` file instructing the agent to "Use apt-get to install ffmpeg".
     *   Or install a pre-made skill: `clawhub install web-utils`.
 
+### Requirements
+*   **Q: How much space do I need on my Coolify server to install openclaw-coolify ?**
+    *   **A**: Make sure to have approximately 13 GB of free space, even if all are not used, this is what is required in docker build cache during the install process.
+
 ### Connection Issues
 *   **Q: "No available server" or "502 Bad Gateway" on Coolify?**
     *   **A**: Ensure your `docker-compose.yaml` has `expose: ["18789"]` (fixed in latest version).
