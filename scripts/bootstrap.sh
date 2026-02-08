@@ -139,7 +139,12 @@ if [ ! -f "$CONFIG_FILE" ]; then
       "mode": "off",
       "resetOnExit": false
     },
-    "auth": { "mode": "token", "token": "$TOKEN" }
+    "auth": { "mode": "token", "token": "$TOKEN" },
+    "http": {
+      "endpoints": {
+        "responses": { "enabled": true }
+      }
+    }
   },
   "agents": {
     "defaults": {
