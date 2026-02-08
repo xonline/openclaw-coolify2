@@ -53,7 +53,9 @@ RUN install -m 0755 -d /etc/apt/keyrings && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Go (Latest)
-RUN curl -L "https://go.dev/dl/go1.23.4.linux-amd64.tar.gz" -o go.tar.gz && \
+RUN ARCH=$(dpkg --print-architecture) && \
+    if [ "$ARCH" = "amd64" ]; then GO_ARCH="amd64"; else GO_ARCH="arm64"; fi && \
+    curl -L "https://go.dev/dl/go1.23.4.linux-${GO_ARCH}.tar.gz" -o go.tar.gz && \
     tar -C /usr/local -xzf go.tar.gz && \
     rm go.tar.gz
 
@@ -87,7 +89,7 @@ ENV BUN_INSTALL_NODE=0 \
 RUN curl -fsSL https://bun.sh/install | bash
 
 # Python tools
-RUN pip3 install ipython csvkit openpyxl python-docx pypdf botasaurus browser-use playwright --break-system-packages && \
+RUN uv pip install --system ipython csvkit openpyxl python-docx pypdf botasaurus browser-use playwright && \
     playwright install-deps
 
 # Configure QMD Persistence
@@ -148,5 +150,5 @@ RUN ln -sf /data/.claude/bin/claude /usr/local/bin/claude 2>/dev/null || true &&
 # ✅ FINAL PATH (important)
 ENV PATH="/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin:/data/.local/bin:/data/.npm-global/bin:/data/.bun/bin:/data/.bun/install/global/bin:/data/.claude/bin:/data/.kimi/bin"
 
-EXPOSE 18789
+EXPOSE 18790
 CMD ["bash", "/app/scripts/bootstrap.sh"]
