@@ -2,18 +2,19 @@
 set -e
 
 # ------------------------------------------------------------------
-# 🛡️ RESILIENCE: Wait for Docker Proxy
+# 🛡️ Quick Sanity Check for Docker Proxy
+# Note: Docker Compose ensures the proxy is healthy before starting,
+#       so this is just a quick verification, not a long wait.
 # ------------------------------------------------------------------
 WAIT_COUNT=0
-MAX_WAIT=60
-echo "⏳ Waiting for docker-proxy to be resolvable and reachable..."
+MAX_WAIT=5
+echo "⏳ Verifying docker-proxy is reachable..."
 until nc -z docker-proxy 2375 >/dev/null 2>&1 || [ $WAIT_COUNT -eq $MAX_WAIT ]; do
-  sleep 2
+  sleep 1
   WAIT_COUNT=$((WAIT_COUNT + 1))
-  echo "   [attempt $WAIT_COUNT/$MAX_WAIT] Waiting for tcp://docker-proxy:2375..."
 done
 
-if [ $WAIT_COUNT -eq $MAX_WAIT ]; then
+if ! nc -z docker-proxy 2375 >/dev/null 2>&1; then
   echo "⚠️  WARNING: docker-proxy not reached. Sandbox features may fail."
 else
   echo "✅ docker-proxy is UP."
