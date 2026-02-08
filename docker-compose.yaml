@@ -97,7 +97,8 @@ services:
       # - /var/run/docker.sock:/var/run/docker.sock
 
     depends_on:
-      - docker-proxy
+      docker-proxy:
+        condition: service_healthy
 
     command: [ "bash", "/app/scripts/bootstrap.sh" ]
     healthcheck:

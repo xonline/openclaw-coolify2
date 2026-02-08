@@ -5,7 +5,7 @@ set -e
 # 🛡️ RESILIENCE: Wait for Docker Proxy
 # ------------------------------------------------------------------
 WAIT_COUNT=0
-MAX_WAIT=30
+MAX_WAIT=60
 echo "⏳ Waiting for docker-proxy to be resolvable and reachable..."
 until nc -z docker-proxy 2375 >/dev/null 2>&1 || [ $WAIT_COUNT -eq $MAX_WAIT ]; do
   sleep 2
@@ -190,10 +190,10 @@ if [ -f "$CONFIG_FILE" ]; then
     
     # 2. Apply Overrides
     jq --arg model "${OPENCLAW_AGENTS_DEFAULTS_MODEL_PRIMARY:-google/gemini-2.0-flash-exp}" \
-       --argjson fallbacks "$FINAL_FALLBACKS" \
+       --arg fallbacks "$FINAL_FALLBACKS" \
        --arg token "${OPENCLAW_GATEWAY_TOKEN:-sk-openclaw-local}" \
        --arg port "${OPENCLAW_GATEWAY_PORT:-18790}" \
-       '.agents.defaults.model.primary = $model | .agents.defaults.model.fallbacks = $fallbacks | .gateway.auth.token = $token | .gateway.port = ($port|tonumber)' \
+       '.agents.defaults.model.primary = $model | .agents.defaults.model.fallbacks = ($fallbacks | fromjson? // [$fallbacks]) | .gateway.auth.token = $token | .gateway.port = ($port|tonumber)' \
        "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 fi
 
