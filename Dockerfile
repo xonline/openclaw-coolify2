@@ -106,10 +106,8 @@ RUN ln -s /usr/bin/fdfind /usr/bin/fd || true && \
 # Stage 4: Application dependencies (package installations)
 FROM runtimes AS dependencies
 
-# OpenClaw install
-ARG OPENCLAW_BETA=false
-ENV OPENCLAW_BETA=${OPENCLAW_BETA} \
-    OPENCLAW_NO_ONBOARD=1 \
+# OpenClaw source build configuration
+ENV OPENCLAW_NO_ONBOARD=1 \
     NPM_CONFIG_UNSAFE_PERM=true
 
 # Install Vercel, Marp, QMD with BuildKit cache mount for faster rebuilds
@@ -118,17 +116,21 @@ RUN --mount=type=cache,target=/data/.bun/install/cache \
     bun pm -g untrusted && \
     bun install -g @openai/codex @google/gemini-cli opencode-ai @steipete/summarize @hyperbrowser/agent clawhub
 
-# Install OpenClaw with npm cache mount
+# Install OpenClaw from source (marcoby fork) for latest fixes
+ARG OPENCLAW_REPO=https://github.com/marcoby/openclaw.git
+ARG OPENCLAW_BRANCH=main
 RUN --mount=type=cache,target=/data/.npm \
-    if [ "$OPENCLAW_BETA" = "true" ]; then \
-    npm install -g openclaw@beta; \
-    else \
-    npm install -g openclaw; \
-    fi && \
+    git clone --depth 1 --branch ${OPENCLAW_BRANCH} ${OPENCLAW_REPO} /tmp/openclaw-src && \
+    cd /tmp/openclaw-src && \
+    corepack enable && corepack prepare pnpm@10.23.0 --activate && \
+    pnpm install --frozen-lockfile && \
+    pnpm run build && \
+    npm install -g . && \
+    cd / && rm -rf /tmp/openclaw-src && \
     if command -v openclaw >/dev/null 2>&1; then \
-    echo "✅ openclaw binary found"; \
+    echo "✅ openclaw binary found (built from source)"; \
     else \
-    echo "❌ OpenClaw install failed (binary 'openclaw' not found)"; \
+    echo "❌ OpenClaw source build failed (binary 'openclaw' not found)"; \
     exit 1; \
     fi
 
