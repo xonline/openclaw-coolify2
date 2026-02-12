@@ -120,7 +120,7 @@ RUN --mount=type=cache,target=/data/.bun/install/cache \
 # Install pnpm and OpenClaw from Git branch (includes nexus tool fixes)
 RUN --mount=type=cache,target=/data/.npm \
     npm install -g pnpm && \
-    npm install -g https://github.com/marcoby/openclaw.git#fix-nexus-tools && \
+    npm install -g https://github.com/marcoby/openclaw.git#main && \
     if command -v openclaw >/dev/null 2>&1; then \
     echo "✅ openclaw binary found"; \
     else \
