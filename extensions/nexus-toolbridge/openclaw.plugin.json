@@ -1,0 +1,9 @@
+{
+  "id": "nexus-toolbridge",
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  }
+}
+

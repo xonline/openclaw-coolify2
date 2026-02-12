@@ -26,8 +26,9 @@ fi
 OPENCLAW_STATE="${OPENCLAW_STATE_DIR:-/data/.openclaw}"
 CONFIG_FILE="$OPENCLAW_STATE/openclaw.json"
 WORKSPACE_DIR="${OPENCLAW_WORKSPACE:-/data/openclaw-workspace}"
+NEXUS_WORKSPACE_DIR="$OPENCLAW_STATE/workspace-nexus"
 
-mkdir -p "$OPENCLAW_STATE" "$WORKSPACE_DIR"
+mkdir -p "$OPENCLAW_STATE" "$WORKSPACE_DIR" "$NEXUS_WORKSPACE_DIR"
 chmod 700 "$OPENCLAW_STATE"
 
 mkdir -p "$OPENCLAW_STATE/credentials"
@@ -40,6 +41,26 @@ for dir in .agents .ssh .config .local .cache .npm .bun .claude .kimi; do
         ln -sf "/data/$dir" "/root/$dir"
     fi
 done
+
+# ------------------------------------------------------------------
+# 🔌 MARCOBY LOGIC: Seed Workspace Extensions (Plugins)
+# ------------------------------------------------------------------
+# OpenClaw scans ~/.openclaw/extensions/* for global plugins.
+# We force-sync our Nexus tool bridge so Nexus integration tools are always available
+# across all sessions (including /tools/invoke).
+EXTENSIONS_DIR="$WORKSPACE_DIR/.openclaw/extensions"
+mkdir -p "$EXTENSIONS_DIR"
+GLOBAL_EXTENSIONS_DIR="$OPENCLAW_STATE/extensions"
+mkdir -p "$GLOBAL_EXTENSIONS_DIR"
+
+if [ -d "/app/extensions/nexus-toolbridge" ]; then
+  echo "🔌 Syncing nexus-toolbridge plugin to global extensions..."
+  rm -rf "$GLOBAL_EXTENSIONS_DIR/nexus-toolbridge"
+  cp -a "/app/extensions/nexus-toolbridge" "$GLOBAL_EXTENSIONS_DIR/nexus-toolbridge"
+
+  # Clean up old workspace copy (avoids "duplicate plugin id" warnings).
+  rm -rf "$EXTENSIONS_DIR/nexus-toolbridge" || true
+fi
 
 # ------------------------------------------------------------------
 # 🧠 MARCOBY LOGIC: Seed Agent Workspaces
@@ -83,6 +104,52 @@ EOF
 }
 
 seed_agent "main" "OpenClaw"
+
+# Seed a minimal workspace for the Nexus-focused agent. Keep this deterministic so
+# Nexus tool workflows are reliable even if the main workspace evolves.
+echo "🧠 Seeding Nexus agent workspace at $NEXUS_WORKSPACE_DIR..."
+cat >"$NEXUS_WORKSPACE_DIR/SOUL.md" <<'EOF'
+# SOUL.md - Nexus Executive Assistant
+
+You are the Nexus Executive Assistant running inside the Marcoby Nexus product.
+
+## Core Behavior
+
+- Prefer Nexus tools over guessing.
+- Be concise and operational.
+- Never claim an integration is connected/expired unless you just verified it using a Nexus tool.
+
+## Nexus Tools
+
+When the user asks anything about inbox/email/OAuth/integrations, you MUST use the Nexus tools:
+
+- nexus_get_integration_status
+- nexus_resolve_email_provider
+- nexus_start_email_connection
+- nexus_test_integration_connection
+- nexus_search_emails
+- nexus_disconnect_integration
+- nexus_connect_imap (only if OAuth is unavailable)
+
+## Tool Disclosure (Required)
+
+When you call any Nexus tool, your final response MUST include a line:
+
+TOOL_USED <toolName>
+
+Then summarize what it returned in 1-3 sentences.
+EOF
+
+cat >"$NEXUS_WORKSPACE_DIR/AGENTS.md" <<'EOF'
+# AGENTS.md - Nexus Workspace
+
+This workspace is intentionally minimal.
+
+Rules:
+- Do not read or write workspace memory files unless explicitly asked.
+- Treat Nexus backend data as the source of truth.
+- For integration workflows, run the relevant nexus_* tool immediately.
+EOF
 
 # ----------------------------
 # Generate Config with Prime Directive
@@ -146,6 +213,28 @@ if [ ! -f "$CONFIG_FILE" ]; then
       }
     }
   },
+  "tools": {
+    "profile": "full",
+    "sandbox": {
+      "tools": {
+        "allow": [
+          "exec",
+          "process",
+          "read",
+          "write",
+          "edit",
+          "apply_patch",
+          "image",
+          "sessions_list",
+          "sessions_history",
+          "sessions_send",
+          "sessions_spawn",
+          "session_status",
+          "nexus_*"
+        ]
+      }
+    }
+  },
   "agents": {
     "defaults": {
       "workspace": "$WORKSPACE_DIR",
@@ -165,7 +254,8 @@ if [ ! -f "$CONFIG_FILE" ]; then
       }
     },
     "list": [
-      { "id": "main","default": true, "name": "default",  "workspace": "${OPENCLAW_WORKSPACE:-/data/openclaw-workspace}"}
+      { "id": "main","default": true, "name": "default",  "workspace": "${OPENCLAW_WORKSPACE:-/data/openclaw-workspace}"},
+      { "id": "nexus", "name": "Nexus Assistant", "workspace": "$NEXUS_WORKSPACE_DIR", "tools": { "profile": "minimal", "alsoAllow": ["nexus_*"] } }
     ]
   }
 }
@@ -195,14 +285,63 @@ if [ -f "$CONFIG_FILE" ]; then
     FINAL_FALLBACKS="${OPENCLAW_AGENTS_DEFAULTS_MODEL_FALLBACKS:-$GENERATED_FALLBACKS}"
     
     # 2. Apply Overrides
-    # Default to OpenRouter Gemini 2.5 Flash if no primary model specified
-    jq --arg model "${OPENCLAW_AGENTS_DEFAULTS_MODEL_PRIMARY:-openrouter/google/gemini-2.5-flash}" \
+    # Default to OpenRouter DeepSeek V3.2 if no primary model specified
+    jq --arg model "${OPENCLAW_AGENTS_DEFAULTS_MODEL_PRIMARY:-openrouter/deepseek/deepseek-v3.2}" \
        --arg fallbacks "$FINAL_FALLBACKS" \
        --arg token "${OPENCLAW_GATEWAY_TOKEN:-sk-openclaw-local}" \
        --arg port "${OPENCLAW_GATEWAY_PORT:-18790}" \
        --arg bind "${OPENCLAW_GATEWAY_BIND:-0.0.0.0}" \
        --arg or_key "${OPENROUTER_API_KEY}" \
-       '.agents.defaults.model = { "primary": $model, "fallbacks": ($fallbacks | fromjson? // [$fallbacks]) } | .gateway.auth.token = $token | .gateway.port = ($port|tonumber) | .gateway.bind = $bind | .gateway.http.endpoints.chatCompletions.enabled = true | .env.OPENROUTER_API_KEY = $or_key | .agents.defaults.models[$model] = {} | reduce ($fallbacks | fromjson? // [$fallbacks])[] as $fb (.; .agents.defaults.models[$fb] = {})' \
+       --arg nexus_workspace "$NEXUS_WORKSPACE_DIR" \
+       '
+         .agents.defaults.model = { "primary": $model, "fallbacks": ($fallbacks | fromjson? // [$fallbacks]) }
+         | .gateway.auth.token = $token
+         | .gateway.port = ($port|tonumber)
+         | .gateway.bind = $bind
+         | .gateway.http.endpoints.chatCompletions.enabled = true
+         | .env.OPENROUTER_API_KEY = $or_key
+         | .agents.defaults.models[$model] = {}
+         | reduce ($fallbacks | fromjson? // [$fallbacks])[] as $fb (.; .agents.defaults.models[$fb] = {})
+         # Ensure sandboxed sessions can call Nexus tools (non-main agents run in sandbox by default).
+         | .tools.profile = "full"
+         | del(.tools.alsoAllow)
+         | .tools.sandbox.tools.allow = (
+             (
+               if (.tools.sandbox.tools.allow | type) == "array" then
+                 .tools.sandbox.tools.allow
+               else
+                 [
+                   "exec",
+                   "process",
+                   "read",
+                   "write",
+                   "edit",
+                   "apply_patch",
+                   "image",
+                   "sessions_list",
+                   "sessions_history",
+                   "sessions_send",
+                   "sessions_spawn",
+                   "session_status"
+                 ]
+               end
+             ) + ["nexus_*"]
+             | unique
+           )
+         # Ensure a dedicated Nexus agent exists with a minimal tool surface.
+         | .agents.list = (
+             (.agents.list // [])
+             | map(select(.id != "nexus"))
+             + [
+                 {
+                   "id": "nexus",
+                   "name": "Nexus Assistant",
+                   "workspace": $nexus_workspace,
+                   "tools": { "profile": "minimal", "alsoAllow": ["nexus_*"] }
+                 }
+               ]
+           )
+       ' \
        "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
 fi
 

@@ -120,7 +120,9 @@ RUN --mount=type=cache,target=/data/.bun/install/cache \
 # Install pnpm and OpenClaw from Git branch (includes nexus tool fixes)
 RUN --mount=type=cache,target=/data/.npm \
     npm install -g pnpm && \
-    npm install -g https://github.com/marcoby/openclaw.git#main && \
+    # NOTE: npm global installs from Git currently fail in Debian slim due to a lifecycle shell spawn issue.
+    # Install from the npm registry instead (built dist shipped).
+    npm install -g openclaw@2026.2.9 && \
     if command -v openclaw >/dev/null 2>&1; then \
     echo "✅ openclaw binary found"; \
     else \
