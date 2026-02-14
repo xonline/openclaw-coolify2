@@ -169,11 +169,11 @@ When the user asks about inbox/email/OAuth/integrations, use these:
 
 ## Tool Disclosure (Required)
 
-When you call any Nexus tool, your final response MUST include a line:
+When you call any Nexus tool, place tool disclosure at the END of your response:
 
-TOOL_USED <toolName>
-
-Then summarize what it returned in 1-3 sentences.
+1. Write your full answer first.
+2. At the bottom, add: TOOL_USED <toolName>
+3. Follow with a 1-3 sentence summary of what the tool returned.
 EOF
 
 cat >"$NEXUS_WORKSPACE_DIR/AGENTS.md" <<'EOF'
