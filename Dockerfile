@@ -42,29 +42,22 @@ FROM base AS system-tools
 
 # Install Docker CE CLI, Go, Cloudflare Tunnel, and GitHub CLI
 RUN apt-get update && \
-    # Docker Repo
     install -m 0755 -d /etc/apt/keyrings && \
     curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
     chmod a+r /etc/apt/keyrings/docker.asc && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" > /etc/apt/sources.list.d/docker.list && \
-    # GitHub CLI Repo
     curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | tee /etc/apt/keyrings/githubcli-archive-keyring.gpg > /dev/null && \
     chmod go+r /etc/apt/keyrings/githubcli-archive-keyring.gpg && \
     echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" > /etc/apt/sources.list.d/github-cli.list && \
-    # Install Tools
     apt-get update && \
     apt-get install -y --no-install-recommends docker-ce-cli gh && \
-    # Install Go
     ARCH=$(dpkg --print-architecture) && \
     if [ "$ARCH" = "amd64" ]; then GO_ARCH="amd64"; else GO_ARCH="arm64"; fi && \
     curl -fsSL "https://go.dev/dl/go1.23.4.linux-${GO_ARCH}.tar.gz" | tar -C /usr/local -xzf - && \
-    # Install Cloudflare Tunnel
     curl -fsSL -o cloudflared.deb "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${ARCH}.deb" && \
     dpkg -i cloudflared.deb && \
     rm cloudflared.deb && \
-    # Install uv
     curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR="/usr/local/bin" sh && \
-    # Cleanup
     rm -rf /var/lib/apt/lists/*
 
 # Stage 3: Language runtimes and package managers (change sometimes)
@@ -83,7 +76,7 @@ RUN curl -fsSL https://bun.sh/install | bash
 
 # Python tools
 RUN uv pip install ipython csvkit openpyxl python-docx pypdf botasaurus browser-use playwright && \
-    playwright install-deps
+    apt-get update && playwright install-deps && rm -rf /var/lib/apt/lists/*
 
 # Configure QMD Persistence
 ENV XDG_CACHE_HOME="/data/.cache"
