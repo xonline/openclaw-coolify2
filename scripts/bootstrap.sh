@@ -299,6 +299,7 @@ if [ ! -f "$CONFIG_FILE" ]; then
   }
 }
 EOF
+chmod 600 "$CONFIG_FILE"
 fi
 
 # ------------------------------------------------------------------
@@ -384,6 +385,7 @@ if [ -f "$CONFIG_FILE" ]; then
            )
        ' \
        "$CONFIG_FILE" > "$CONFIG_FILE.tmp" && mv "$CONFIG_FILE.tmp" "$CONFIG_FILE"
+    chmod 600 "$CONFIG_FILE"
 fi
 
 # ----------------------------
