@@ -35,6 +35,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     pass \
     chromium \
     unzip \
+    netcat-openbsd \
     && ln -s /usr/bin/python3 /usr/bin/python \
     && rm -rf /var/lib/apt/lists/*
 
