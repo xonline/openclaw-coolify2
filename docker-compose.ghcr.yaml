@@ -1,6 +1,6 @@
 services:
   openclaw:
-    image: "${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:2026.2.9}"
+    image: "${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}"
     restart: 'on-failure:10'
     networks:
       - coolify
