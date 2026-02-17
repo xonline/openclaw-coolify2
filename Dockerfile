@@ -93,9 +93,11 @@ FROM runtimes AS dependencies
 
 # OpenClaw install
 ARG OPENCLAW_BETA=false
+ARG OPENCLAW_VERSION=2026.2.9
 ENV OPENCLAW_BETA=${OPENCLAW_BETA} \
     OPENCLAW_NO_ONBOARD=1 \
-    NPM_CONFIG_UNSAFE_PERM=true
+    NPM_CONFIG_UNSAFE_PERM=true \
+    OPENCLAW_VERSION=${OPENCLAW_VERSION}
 
 # Install Vercel, Marp, QMD with BuildKit cache mount for faster rebuilds
 RUN --mount=type=cache,target=/data/.bun/install/cache \
@@ -103,12 +105,10 @@ RUN --mount=type=cache,target=/data/.bun/install/cache \
     bun pm -g untrusted && \
     bun install -g @openai/codex @google/gemini-cli opencode-ai @steipete/summarize @hyperbrowser/agent clawhub
 
-# Install pnpm and OpenClaw from Git branch (includes nexus tool fixes)
+# Install pnpm and OpenClaw
 RUN --mount=type=cache,target=/data/.npm \
     npm install -g pnpm && \
-    # NOTE: npm global installs from Git currently fail in Debian slim due to a lifecycle shell spawn issue.
-    # Install from the npm registry instead (built dist shipped).
-    npm install -g openclaw@2026.2.9 && \
+    npm install -g openclaw@${OPENCLAW_VERSION} && \
     if command -v openclaw >/dev/null 2>&1; then \
     echo "✅ openclaw binary found"; \
     else \
