@@ -1,5 +1,6 @@
 import type { OpenClawPluginApi } from "openclaw/plugin-sdk";
 import { emptyPluginConfigSchema, jsonResult } from "openclaw/plugin-sdk";
+import { registerPluginHooksFromDir } from "openclaw/plugin-sdk";
 import crypto from "node:crypto";
 
 function normalizeBaseUrl(input: string | undefined | null): string {
@@ -108,6 +109,8 @@ const nexusToolbridgePlugin = {
   description: "Expose Nexus integration tools to OpenClaw by proxying Nexus /api/openclaw/tools/execute.",
   configSchema: emptyPluginConfigSchema(),
   register(api: OpenClawPluginApi) {
+    registerPluginHooksFromDir(api, "./hooks");
+
     api.registerTool((ctx) => {
       const sessionKey = ctx.sessionKey;
 
@@ -144,6 +147,16 @@ const nexusToolbridgePlugin = {
       };
 
       return [
+        makeTool("nexus_m365_capabilities", "Show Microsoft 365 capability availability for this user, including missing scopes and which tools are usable now.", {
+          type: "object",
+          additionalProperties: false,
+          properties: {},
+        }),
+        makeTool("nexus_get_user_identity_context", "Fetch structured onboarding identity context for this Nexus user.", {
+          type: "object",
+          additionalProperties: false,
+          properties: {},
+        }),
         makeTool("nexus_get_integration_status", "Get current integration status for the signed-in Nexus user.", {
           type: "object",
           additionalProperties: false,
@@ -218,4 +231,3 @@ const nexusToolbridgePlugin = {
 };
 
 export default nexusToolbridgePlugin;
-
