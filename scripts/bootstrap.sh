@@ -309,20 +309,28 @@ if [ -f "$CONFIG_FILE" ]; then
     echo "🔄 Enforcing Nexus/Marcoby configuration in openclaw.json..."
     
     # 1. Fallback Construction
-    FALLBACKS_ARRAY=()
-    [ -n "$OPENROUTER_API_KEY" ] && FALLBACKS_ARRAY+=("\"openrouter/anthropic/claude-3.5-sonnet\"" "\"openrouter/openai/gpt-4o-mini\"")
-    [ -n "$OPENAI_API_KEY" ] && FALLBACKS_ARRAY+=("\"openai/gpt-4o-mini\"")
-    [ -n "$ANTHROPIC_API_KEY" ] && FALLBACKS_ARRAY+=("\"anthropic/claude-3-5-sonnet-20241022\"")
-    
-    # Join array with commas
-    IFS=, ; FALLBACKS_STRING="${FALLBACKS_ARRAY[*]}" ; unset IFS
-    GENERATED_FALLBACKS="[$FALLBACKS_STRING]"
-    
-    if [ "$GENERATED_FALLBACKS" == "[]" ]; then
-       GENERATED_FALLBACKS='["openrouter/anthropic/claude-3.5-sonnet", "openrouter/openai/gpt-4o-mini"]'
+    # Clean up and convert comma-list to JSON array if it isn't already JSON
+    if [[ "$OPENCLAW_AGENTS_DEFAULTS_MODEL_FALLBACKS" != [* ]]; then
+        # Convert "a, b, c" to ["a","b","c"]
+        JSON_FALLBACKS=$(echo "$OPENCLAW_AGENTS_DEFAULTS_MODEL_FALLBACKS" | jq -Rc 'split(",") | map(sub("^\\s+"; "")) | map(sub("\\s+$"; ""))')
+        FINAL_FALLBACKS="$JSON_FALLBACKS"
+    else
+        FINAL_FALLBACKS="$OPENCLAW_AGENTS_DEFAULTS_MODEL_FALLBACKS"
+    fi
+
+    if [ -z "$FINAL_FALLBACKS" ] || [ "$FINAL_FALLBACKS" == "[]" ]; then
+        FALLBACKS_ARRAY=()
+        [ -n "$OPENROUTER_API_KEY" ] && FALLBACKS_ARRAY+=("\"openrouter/anthropic/claude-3.5-sonnet\"" "\"openrouter/openai/gpt-4o-mini\"")
+        [ -n "$OPENAI_API_KEY" ] && FALLBACKS_ARRAY+=("\"openai/gpt-4o-mini\"")
+        [ -n "$ANTHROPIC_API_KEY" ] && FALLBACKS_ARRAY+=("\"anthropic/claude-3-5-sonnet-20241022\"")
+        
+        IFS=, ; FALLBACKS_STRING="${FALLBACKS_ARRAY[*]}" ; unset IFS
+        FINAL_FALLBACKS="[$FALLBACKS_STRING]"
     fi
     
-    FINAL_FALLBACKS="${OPENCLAW_AGENTS_DEFAULTS_MODEL_FALLBACKS:-$GENERATED_FALLBACKS}"
+    if [ "$FINAL_FALLBACKS" == "[]" ]; then
+       FINAL_FALLBACKS='["openrouter/anthropic/claude-3.5-sonnet", "openrouter/openai/gpt-4o-mini"]'
+    fi
     
     # 2. Apply Overrides
     # Default to OpenRouter DeepSeek V3.2 if no primary model specified
@@ -422,6 +430,12 @@ ulimit -n 65535
 # ----------------------------
 # Banner & Access Info
 # ----------------------------
+echo ""
+echo "📊 Deployment Info:"
+echo "   - OpenClaw Version: $(openclaw --version)"
+echo "   - Image Built: ${BUILD_DATE:-unknown}"
+echo ""
+
 # Try to extract existing token if not already set (e.g. from previous run)
 if [ -f "$CONFIG_FILE" ]; then
     SAVED_TOKEN=$(jq -r '.gateway.auth.token // empty' "$CONFIG_FILE" 2>/dev/null || grep -o '"token": "[^"]*"' "$CONFIG_FILE" | tail -1 | cut -d'"' -f4)
