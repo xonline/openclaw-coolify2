@@ -1,6 +1,6 @@
 services:
   openclaw:
-    image: "${OPENCLAW_IMAGE:-ghcr.io/marcoby-dev-ops/openclaw-coolify:latest}"
+    image: "${OPENCLAW_IMAGE:-ghcr.io/marcoby-dev-ops/openclaw-coolify:2026.2.17}"
     restart: 'on-failure:10'
     networks:
       - coolify
@@ -52,7 +52,7 @@ services:
       start_period: 120s
 
   docker-proxy:
-    image: 'tecnativa/docker-socket-proxy:latest'
+    image: 'tecnativa/docker-socket-proxy:latest@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476'
     restart: unless-stopped
     networks:
       - coolify

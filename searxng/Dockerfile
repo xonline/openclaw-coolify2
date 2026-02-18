@@ -1,4 +1,4 @@
-FROM searxng/searxng:latest
+FROM searxng/searxng:latest@sha256:60055af6f2f1ca14b488d9c0f47a019d1dbaf15b4f6547a7194253bf2ab94744
 
 # Copy configuration files directly into the image
 COPY searxng/settings.yml /etc/searxng/settings.yml

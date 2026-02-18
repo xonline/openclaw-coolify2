@@ -1,6 +1,6 @@
 services:
   registry:
-    image: 'registry:2'
+    image: 'registry:2@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373'
     restart: unless-stopped
     networks:
       - coolify
@@ -66,7 +66,7 @@ services:
       start_period: 120s
 
   docker-proxy:
-    image: 'tecnativa/docker-socket-proxy:latest'
+    image: 'tecnativa/docker-socket-proxy:latest@sha256:1f3a6f303320723d199d2316a3e82b2e2685d86c275d5e3deeaf182573b47476'
     restart: unless-stopped
     networks:
       - coolify
