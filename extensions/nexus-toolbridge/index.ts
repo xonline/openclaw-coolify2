@@ -109,7 +109,13 @@ const nexusToolbridgePlugin = {
   description: "Expose Nexus integration tools to OpenClaw by proxying Nexus /api/openclaw/tools/execute.",
   configSchema: emptyPluginConfigSchema(),
   register(api: OpenClawPluginApi) {
-    registerPluginHooksFromDir(api, "./hooks");
+    if (typeof registerPluginHooksFromDir === "function") {
+      registerPluginHooksFromDir(api, "./hooks");
+    } else {
+      api.logger.warn(
+        "[nexus-toolbridge] registerPluginHooksFromDir is unavailable in this OpenClaw build; continuing without bundled hooks.",
+      );
+    }
 
     api.registerTool((ctx) => {
       const sessionKey = ctx.sessionKey;
