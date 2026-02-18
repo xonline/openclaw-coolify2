@@ -6,7 +6,7 @@
         {
             "name": "OpenClaw",
             "type": "docker-compose",
-            "dockerComposeFile": "docker-compose.ghcr.yaml"
+            "dockerComposeFile": "docker-compose.yaml"
         }
     ],
     "tags": [

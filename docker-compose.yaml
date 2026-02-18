@@ -10,7 +10,11 @@ services:
       REGISTRY_HTTP_SECRET: '${SERVICE_BASE64_REGISTRY}'
 
   openclaw:
-    image: "${OPENCLAW_IMAGE:-ghcr.io/marcoby-dev-ops/openclaw-coolify:latest}"
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        OPENCLAW_BETA: '${OPENCLAW_BETA:-false}'
     restart: 'on-failure:10'
     networks:
       - coolify
