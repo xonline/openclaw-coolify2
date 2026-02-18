@@ -70,14 +70,18 @@ EXTENSIONS_DIR="$WORKSPACE_DIR/.openclaw/extensions"
 mkdir -p "$EXTENSIONS_DIR"
 GLOBAL_EXTENSIONS_DIR="$OPENCLAW_STATE/extensions"
 mkdir -p "$GLOBAL_EXTENSIONS_DIR"
+NEXUS_TOOLBRIDGE_AVAILABLE=false
 
 if [ -d "/app/extensions/nexus-toolbridge" ]; then
   echo "🔌 Syncing nexus-toolbridge plugin to global extensions..."
   rm -rf "$GLOBAL_EXTENSIONS_DIR/nexus-toolbridge"
   cp -a "/app/extensions/nexus-toolbridge" "$GLOBAL_EXTENSIONS_DIR/nexus-toolbridge"
+  NEXUS_TOOLBRIDGE_AVAILABLE=true
 
   # Clean up old workspace copy (avoids "duplicate plugin id" warnings).
   rm -rf "$EXTENSIONS_DIR/nexus-toolbridge" || true
+else
+  echo "⚠️  nexus-toolbridge plugin not found at /app/extensions/nexus-toolbridge; Nexus tools will be disabled."
 fi
 
 # ------------------------------------------------------------------
@@ -341,21 +345,28 @@ if [ -f "$CONFIG_FILE" ]; then
        --arg bind "${OPENCLAW_GATEWAY_BIND:-0.0.0.0}" \
        --arg or_key "${OPENROUTER_API_KEY}" \
        --arg nexus_workspace "$NEXUS_WORKSPACE_DIR" \
+       --arg nexus_plugin_available "$NEXUS_TOOLBRIDGE_AVAILABLE" \
        '
+         def with_or_without_nexus_tool(base):
+           if $nexus_plugin_available == "true" then
+             (base + ["nexus_*"] | unique)
+           else
+             (base | map(select(. != "nexus_*")) | unique)
+           end;
          .agents.defaults.model = { "primary": $model, "fallbacks": ($fallbacks | fromjson? // [$fallbacks]) }
          | .gateway.auth.token = $token
          | .gateway.port = ($port|tonumber)
          | .gateway.bind = $bind
          | .gateway.http.endpoints.chatCompletions.enabled = true
          | .env.OPENROUTER_API_KEY = $or_key
-         | .plugins.entries."nexus-toolbridge".enabled = true
+         | .plugins.entries."nexus-toolbridge".enabled = ($nexus_plugin_available == "true")
          | .agents.defaults.models[$model] = {}
          | reduce ($fallbacks | fromjson? // [$fallbacks])[] as $fb (.; .agents.defaults.models[$fb] = {})
          # Ensure sandboxed sessions can call Nexus tools (non-main agents run in sandbox by default).
          | .tools.profile = "full"
          | del(.tools.alsoAllow)
          | .tools.sandbox.tools.allow = (
-             (
+             with_or_without_nexus_tool(
                if (.tools.sandbox.tools.allow | type) == "array" then
                  .tools.sandbox.tools.allow
                else
@@ -374,21 +385,30 @@ if [ -f "$CONFIG_FILE" ]; then
                    "session_status"
                  ]
                end
-             ) + ["nexus_*"]
-             | unique
+             )
            )
          # Ensure a dedicated Nexus agent exists with full tools + Nexus bridged tools.
          | .agents.list = (
              (.agents.list // [])
              | map(select(.id != "nexus"))
              + [
-                 {
-                   "id": "nexus",
-                   "name": "Nexus Assistant",
-                   "workspace": $nexus_workspace,
-                   "sandbox": { "mode": "off" },
-                   "tools": { "profile": "full", "alsoAllow": ["nexus_*"] }
-                 }
+                 if $nexus_plugin_available == "true" then
+                   {
+                     "id": "nexus",
+                     "name": "Nexus Assistant",
+                     "workspace": $nexus_workspace,
+                     "sandbox": { "mode": "off" },
+                     "tools": { "profile": "full", "alsoAllow": ["nexus_*"] }
+                   }
+                 else
+                   {
+                     "id": "nexus",
+                     "name": "Nexus Assistant",
+                     "workspace": $nexus_workspace,
+                     "sandbox": { "mode": "off" },
+                     "tools": { "profile": "full" }
+                   }
+                 end
                ]
            )
        ' \

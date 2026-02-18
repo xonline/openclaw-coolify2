@@ -6,7 +6,7 @@ If you want Coolify to pull the OpenClaw image from GitHub Container Registry (G
 Example
 -------
 
-1. Set Coolify env var (optional): `OPENCLAW_IMAGE=ghcr.io/openclaw/openclaw:latest`
+1. Set Coolify env var (optional): `OPENCLAW_IMAGE=ghcr.io/marcoby-dev-ops/openclaw-coolify:latest`
 2. In Coolify, create the app using the repository and point the **Docker Compose file** to `docker-compose.ghcr.yaml`.
 3. Redeploy — Coolify will pull the image instead of building the container on the host.
 

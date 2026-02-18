@@ -1,6 +1,6 @@
 services:
   openclaw:
-    image: "${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}"
+    image: "${OPENCLAW_IMAGE:-ghcr.io/marcoby-dev-ops/openclaw-coolify:latest}"
     restart: 'on-failure:10'
     networks:
       - coolify
