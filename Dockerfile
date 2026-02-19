@@ -1,10 +1,9 @@
 # syntax=docker/dockerfile:1
 # Multi-stage build for optimal caching with BuildKit
-# Each stage builds on the previous, with COPY . . only in the final stage
-# BuildKit features: cache mounts, parallel builds, improved layer caching
 
-# Stage 1: Base system dependencies (rarely changes)
-FROM --platform=linux/amd64 node:lts-bookworm-slim AS base
+# Stage 1: Base system dependencies
+# FIX: Removed forced amd64 platform to allow native ARM64 speed on Oracle
+FROM node:lts-bookworm-slim AS base
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -39,7 +38,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -s /usr/bin/python3 /usr/bin/python \
     && rm -rf /var/lib/apt/lists/*
 
-# Stage 2: System CLI tools (change occasionally)
+# Stage 2: System CLI tools
 FROM base AS system-tools
 
 # Install Docker CE CLI, Go, Cloudflare Tunnel, and GitHub CLI
@@ -63,7 +62,7 @@ RUN apt-get update && \
     curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR="/usr/local/bin" sh && \
     rm -rf /var/lib/apt/lists/*
 
-# Stage 3: Language runtimes and package managers (change sometimes)
+# Stage 3: Language runtimes and package managers
 FROM system-tools AS runtimes
 
 ENV BUN_INSTALL_NODE=0 \
@@ -88,10 +87,20 @@ ENV XDG_CACHE_HOME="/data/.cache"
 RUN ln -s /usr/bin/fdfind /usr/bin/fd || true && \
     ln -s /usr/bin/batcat /usr/bin/bat || true
 
-# Stage 4: Application dependencies (package installations)
+# Stage 4: Application dependencies
 FROM runtimes AS dependencies
 
-# OpenClaw install
+# 🦞 MASTER FIX for better-sqlite3 exit code 127
+# Ensure build essentials and node-gyp are present in THIS specific stage
+USER root
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    make \
+    g++ \
+    && npm install -g node-gyp \
+    && rm -rf /var/lib/apt/lists/*
+
+# OpenClaw install settings
 ARG OPENCLAW_BETA=false
 ARG OPENCLAW_VERSION=2026.2.17
 ENV OPENCLAW_BETA=${OPENCLAW_BETA} \
@@ -99,11 +108,11 @@ ENV OPENCLAW_BETA=${OPENCLAW_BETA} \
     NPM_CONFIG_UNSAFE_PERM=true \
     OPENCLAW_VERSION=${OPENCLAW_VERSION}
 
-# Install Vercel, Marp, QMD with BuildKit cache mount for faster rebuilds
+# Install Vercel, Marp, QMD
 RUN --mount=type=cache,target=/data/.bun/install/cache \
     bun install -g vercel @marp-team/marp-cli https://github.com/tobi/qmd && hash -r && \
     bun pm -g untrusted && \
-    bun install -g @openai/codex @google/gemini-cli opencode-ai @steipete/summarize @hyperbrowser/agent clawhub
+    bun install -g @openai/codex @google/gemini-cli opencode-ai @summarize @hyperbrowser/agent clawhub
 
 # Install pnpm and OpenClaw
 RUN --mount=type=cache,target=/data/.npm \
@@ -116,34 +125,6 @@ RUN --mount=type=cache,target=/data/.npm \
     exit 1; \
     fi
 
-# Patch: extend claude-opus-4-6 forward-compat to google-antigravity provider
-# This adds google-antigravity support until upstream npm publishes the fix
+# Patch for google-antigravity support
 RUN find /usr/local/lib/node_modules/openclaw/dist -name '*.js' -exec \
     sed -i 's/(normalizedProvider !== "anthropic") return;/(normalizedProvider !== "anthropic" \&\& normalizedProvider !== "google-antigravity") return;/g' {} + && \
-    echo "✅ Applied google-antigravity claude-opus-4-6 patch"
-
-# AI Tool Suite & ClawHub
-RUN curl -fsSL https://claude.ai/install.sh | bash && \
-    curl -fsSL https://code.kimi.com/install.sh | bash
-
-# Stage 5: Final application stage (changes frequently)
-FROM dependencies AS final
-
-WORKDIR /app
-
-# Copy everything (obeying .dockerignore)
-# This is the only layer that changes on code updates
-COPY . .
-
-# Specialized symlinks and permissions
-RUN ln -sf /data/.claude/bin/claude /usr/local/bin/claude 2>/dev/null || true && \
-    ln -sf /data/.kimi/bin/kimi /usr/local/bin/kimi 2>/dev/null || true && \
-    ln -sf /app/scripts/openclaw-approve.sh /usr/local/bin/openclaw-approve && \
-    chmod +x /app/scripts/*.sh /usr/local/bin/openclaw-approve
-
-# ✅ FINAL PATH (important)
-ENV PATH="/opt/venv/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin:/data/.local/bin:/data/.npm-global/bin:/data/.bun/bin:/data/.bun/install/global/bin:/data/.claude/bin:/data/.kimi/bin"
-
-ARG PORT=18790
-EXPOSE ${PORT}
-CMD ["bash", "/app/scripts/bootstrap.sh"]
