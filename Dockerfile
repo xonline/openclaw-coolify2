@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
 # Multi-stage build for optimal caching with BuildKit
-# Optimized for Oracle Ampere (ARM64)
+# Each stage builds on the previous, with COPY . . only in the final stage
+# BuildKit features: cache mounts, parallel builds, improved layer caching
 
-# Stage 1: Base system dependencies
-# FIX: Removed --platform=linux/amd64 to allow native ARM64 compilation
-FROM node:lts-bookworm-slim AS base
+# Stage 1: Base system dependencies (rarely changes)
+FROM --platform=linux/amd64 node:lts-bookworm-slim AS base
 
 # Prevent interactive prompts during package installation
 ENV DEBIAN_FRONTEND=noninteractive \
@@ -20,7 +20,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pip \
     python3-venv \
-    python3-dev \
     jq \
     lsof \
     openssl \
@@ -33,7 +32,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     imagemagick \
     graphviz \
     sqlite3 \
-    libsqlite3-dev \
     pass \
     chromium \
     unzip \
@@ -41,7 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && ln -s /usr/bin/python3 /usr/bin/python \
     && rm -rf /var/lib/apt/lists/*
 
-# Stage 2: System CLI tools
+# Stage 2: System CLI tools (change occasionally)
 FROM base AS system-tools
 
 # Install Docker CE CLI, Go, Cloudflare Tunnel, and GitHub CLI
@@ -65,7 +63,7 @@ RUN apt-get update && \
     curl -LsSf https://astral.sh/uv/install.sh | UV_INSTALL_DIR="/usr/local/bin" sh && \
     rm -rf /var/lib/apt/lists/*
 
-# Stage 3: Language runtimes and package managers
+# Stage 3: Language runtimes and package managers (change sometimes)
 FROM system-tools AS runtimes
 
 ENV BUN_INSTALL_NODE=0 \
@@ -90,18 +88,8 @@ ENV XDG_CACHE_HOME="/data/.cache"
 RUN ln -s /usr/bin/fdfind /usr/bin/fd || true && \
     ln -s /usr/bin/batcat /usr/bin/bat || true
 
-# Stage 4: Application dependencies
+# Stage 4: Application dependencies (package installations)
 FROM runtimes AS dependencies
-
-# 🦞 ARM64 BUILD FIX: Ensure compilers are ready for native compilation (better-sqlite3)
-USER root
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 \
-    make \
-    g++ \
-    gcc \
-    && npm install -g node-gyp \
-    && rm -rf /var/lib/apt/lists/*
 
 # OpenClaw install
 ARG OPENCLAW_BETA=false
@@ -111,14 +99,13 @@ ENV OPENCLAW_BETA=${OPENCLAW_BETA} \
     NPM_CONFIG_UNSAFE_PERM=true \
     OPENCLAW_VERSION=${OPENCLAW_VERSION}
 
-# Install Vercel, Marp, QMD with BuildKit cache mount
+# Install Vercel, Marp, QMD with BuildKit cache mount for faster rebuilds
 RUN --mount=type=cache,target=/data/.bun/install/cache \
     bun install -g vercel @marp-team/marp-cli https://github.com/tobi/qmd && hash -r && \
     bun pm -g untrusted && \
     bun install -g @openai/codex @google/gemini-cli opencode-ai @steipete/summarize @hyperbrowser/agent clawhub
 
 # Install pnpm and OpenClaw
-# Using NPM here as it is more stable for ARM64 native module compilation
 RUN --mount=type=cache,target=/data/.npm \
     npm install -g pnpm && \
     npm install -g openclaw@${OPENCLAW_VERSION} && \
@@ -130,6 +117,7 @@ RUN --mount=type=cache,target=/data/.npm \
     fi
 
 # Patch: extend claude-opus-4-6 forward-compat to google-antigravity provider
+# This adds google-antigravity support until upstream npm publishes the fix
 RUN find /usr/local/lib/node_modules/openclaw/dist -name '*.js' -exec \
     sed -i 's/(normalizedProvider !== "anthropic") return;/(normalizedProvider !== "anthropic" \&\& normalizedProvider !== "google-antigravity") return;/g' {} + && \
     echo "✅ Applied google-antigravity claude-opus-4-6 patch"
@@ -138,12 +126,13 @@ RUN find /usr/local/lib/node_modules/openclaw/dist -name '*.js' -exec \
 RUN curl -fsSL https://claude.ai/install.sh | bash && \
     curl -fsSL https://code.kimi.com/install.sh | bash
 
-# Stage 5: Final application stage
+# Stage 5: Final application stage (changes frequently)
 FROM dependencies AS final
 
 WORKDIR /app
 
-# Copy everything
+# Copy everything (obeying .dockerignore)
+# This is the only layer that changes on code updates
 COPY . .
 
 # Specialized symlinks and permissions
@@ -152,7 +141,7 @@ RUN ln -sf /data/.claude/bin/claude /usr/local/bin/claude 2>/dev/null || true &&
     ln -sf /app/scripts/openclaw-approve.sh /usr/local/bin/openclaw-approve && \
     chmod +x /app/scripts/*.sh /usr/local/bin/openclaw-approve
 
-# ✅ FINAL PATH
+# ✅ FINAL PATH (important)
 ENV PATH="/opt/venv/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin:/data/.local/bin:/data/.npm-global/bin:/data/.bun/bin:/data/.bun/install/global/bin:/data/.claude/bin:/data/.kimi/bin"
 
 ARG PORT=18790
