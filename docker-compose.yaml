@@ -1,8 +1,9 @@
+services:
   openclaw:
     build:
       context: .
       dockerfile: Dockerfile
-    restart: 'on-failure:10'
+    restart: unless-stopped
     networks:
       - coolify
     env_file:
@@ -11,15 +12,17 @@
       PORT: 18790
       NODE_ENV: production
       HOME: /data
-      OPENCLAW_STATE_DIR: /data/.openclaw
-      OPENCLAW_WORKSPACE: /data/openclaw-workspace
-      OPENAI_API_KEY: '${OPENAI_API_KEY}'
-      ANTHROPIC_API_KEY: '${ANTHROPIC_API_KEY}'
-      GEMINI_API_KEY: '${GEMINI_API_KEY}'
     volumes:
-      - 'openclaw-data:/data'
+      - openclaw-data:/data
     ports:
-      - '18790:18790'
+      - "18790:18790"
     command:
       - bash
       - /app/scripts/bootstrap.sh
+
+networks:
+  coolify:
+    external: true
+
+volumes:
+  openclaw-data:
