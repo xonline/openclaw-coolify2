@@ -1,24 +1,43 @@
 services:
   openclaw:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/marcoby-dev-ops/openclaw:latest
+    container_name: openclaw
     restart: unless-stopped
+    environment:
+      - DOCKER_HOST=tcp://docker-proxy:2375
+      - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    volumes:
+      - openclaw-data:/data/openclaw-workspace
+      - /data/.openclaw/workspace-nexus:/data/.openclaw/workspace-nexus
     networks:
       - coolify
-    env_file:
-      - .env
+    depends_on:
+      - docker-proxy
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.openclaw.rule=Host(`${DOMAIN}`)
+      - traefik.http.services.openclaw.loadbalancer.server.port=3000
+
+  docker-proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    container_name: openclaw-docker-proxy
+    restart: unless-stopped
+    privileged: true # CRITICAL for Oracle ARM
     environment:
-      PORT: 18790
-      NODE_ENV: production
-      HOME: /data
+      - CONTAINERS=1
+      - IMAGES=1
+      - NETWORKS=1
+      - VOLUMES=1
+      - BUILD=1
+      - EXEC=1
+      - AUTH=0
     volumes:
-      - openclaw-data:/data
-    ports:
-      - "18790:18790"
-    command:
-      - bash
-      - /app/scripts/bootstrap.sh
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      coolify:
+        aliases:
+          - docker-proxy
 
 networks:
   coolify:
