@@ -6,33 +6,14 @@ services:
     environment:
       - DOCKER_HOST=tcp://docker-proxy:2375
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
       - OPENCLAW_PRIMARY_MODEL=${OPENCLAW_AGENTS_DEFAULTS_MODEL_PRIMARY}
-      - BROWSER_CDP_URL=http://browser:9223 
-      - BROWSER_DEFAULT_PROFILE=openclaw
-      - BROWSER_EVALUATE_ENABLED=true
     volumes:
       - openclaw-data:/data
     networks:
       - coolify
     depends_on:
       - docker-proxy
-      - browser
-
-  browser:
-    image: openclaw-browser:local
-    container_name: openclaw-browser
-    restart: unless-stopped
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Etc/UTC
-      - CHROME_CLI=--remote-debugging-port=9222
-    volumes:
-      - browser-data:/config
-    shm_size: 2g
-    networks:
-      - coolify
 
   docker-proxy:
     image: tecnativa/docker-socket-proxy:latest
@@ -60,4 +41,3 @@ networks:
 
 volumes:
   openclaw-data:
-  browser-data:
