@@ -13,7 +13,7 @@ services:
       - OPENCLAW_GATEWAY_URL=wss://${SERVICE_FQDN_OPENCLAW}
       - OPENCLAW_GATEWAY_BIND=auto
       - BROWSER_CDP_URL=http://browser:3000
-      - OPENCLAW_GATEWAY_TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16
+      - OPENCLAW_GATEWAY_TRUSTED_PROXIES=10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,127.0.0.1
     volumes:
       - openclaw-data:/data
     networks:
