@@ -7,13 +7,27 @@ services:
       - DOCKER_HOST=tcp://docker-proxy:2375
       - OPENCLAW_GATEWAY_TOKEN=${OPENCLAW_GATEWAY_TOKEN}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - KIMI_API_KEY=${KIMI_API_KEY}
+      - MOONSHOT_API_KEY=${MOONSHOT_API_KEY}
       - OPENCLAW_PRIMARY_MODEL=${OPENCLAW_AGENTS_DEFAULTS_MODEL_PRIMARY}
+      - OPENCLAW_GATEWAY_URL=${OPENCLAW_GATEWAY_URL}
+      - BROWSER_CDP_URL=ws://browser:3000
     volumes:
       - openclaw-data:/data
     networks:
       - coolify
     depends_on:
       - docker-proxy
+      - browser
+
+  browser:
+    image: browserless/chrome:latest
+    container_name: openclaw-browser
+    restart: unless-stopped
+    networks:
+      coolify:
+        aliases:
+          - browser
 
   docker-proxy:
     image: tecnativa/docker-socket-proxy:latest
