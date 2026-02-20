@@ -1,6 +1,6 @@
 services:
   openclaw:
-    image: ghcr.io/marcoby-dev-ops/openclaw:latest
+    image: coollabsio/openclaw:latest
     container_name: openclaw
     restart: unless-stopped
     environment:
