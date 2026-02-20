@@ -11,7 +11,7 @@ services:
       - MOONSHOT_API_KEY=${MOONSHOT_API_KEY}
       - OPENCLAW_PRIMARY_MODEL=${OPENCLAW_AGENTS_DEFAULTS_MODEL_PRIMARY}
       - OPENCLAW_GATEWAY_URL=${OPENCLAW_GATEWAY_URL}
-      - BROWSER_CDP_URL=ws://browser:3000
+      - BROWSER_CDP_URL=http://browser:3000
     volumes:
       - openclaw-data:/data
     networks:
