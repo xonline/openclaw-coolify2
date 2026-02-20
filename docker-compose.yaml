@@ -19,6 +19,10 @@ services:
     depends_on:
       - docker-proxy
       - browser
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.openclaw.rule=Host(`${SERVICE_FQDN_OPENCLAW}`)
+      - traefik.http.services.openclaw.loadbalancer.server.port=8080
 
   browser:
     image: browserless/chrome:latest
